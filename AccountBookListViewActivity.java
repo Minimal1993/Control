@@ -31,7 +31,7 @@ import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
-
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.afollestad.materialdialogs.DialogAction;
@@ -79,57 +79,67 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
-import butterknife.OnClick;
 import cn.bmob.v3.BmobQuery;
 import cn.bmob.v3.BmobUser;
 import cn.bmob.v3.listener.FindListener;
 import de.hdodenhof.circleimageview.CircleImageView;
 import xyz.danoz.recyclerviewfastscroller.vertical.VerticalRecyclerViewFastScroller;
 
-/**
- * @author Liu Ji
- * @version 1.3
- */
 public class AccountBookListViewActivity extends AppCompatActivity
         implements
         View.OnClickListener,
         DatePickerDialog.OnDateSetListener,
         MySwipeableItemAdapter.OnItemDeleteListener,
         MySwipeableItemAdapter.OnItemClickListener {
-    //some declarations
+
     private MaterialSearchView searchView;
+
     private Context mContext;
+
     private DrawerLayout mDrawer;
     private ActionBarDrawerToggle mDrawerToggle;
     private Toolbar toolbar;
+
     private RecyclerView recyclerView;
     private RecyclerView.LayoutManager layoutManager;
     private RecyclerView.Adapter adapter;
     private RecyclerView.Adapter wrappedAdapter;
     private RecyclerViewSwipeManager recyclerViewSwipeManager;
     private RecyclerViewTouchActionGuardManager recyclerViewTouchActionGuardManager;
+
     private MySwipeableItemAdapter mAdapter;
+
     private TextView emptyTip;
+
     private int lastPosition;
     private boolean undid = false;
+
     private final int EDITTING_RECORD = 0;
+
     private VerticalRecyclerViewFastScroller verticalRecyclerViewFastScroller;
+
     private double originalSum;
+
     private CircleImageView profileImage;
     private SliderLayout mDemoSlider;
     private FrameLayout infoLayout;
+
     private TextView titleExpense;
     private TextView titleSum;
     private SliderLayout titleSlider;
+
     private TextView userName;
     private TextView userEmail;
+
     private final double MIN_MONEY = 0;
     private final double MAX_MONEY = 99999;
+
     private double LEFT_MONEY = CoCoinUtil.INPUT_MIN_EXPENSE;
     private double RIGHT_MONEY = CoCoinUtil.INPUT_MAX_EXPENSE;
     private int TAG_ID = -1;
     private Calendar LEFT_CALENDAR = null;
     private Calendar RIGHT_CALENDAR = null;
+
     private TextView setMoney;
     private TextView noMoney;
     private TextView setTime;
@@ -137,32 +147,82 @@ public class AccountBookListViewActivity extends AppCompatActivity
     private TextView setTag;
     private TextView noTag;
     private TextView select;
+
     private TextView leftExpense;
     private TextView rightExpense;
     private TextView leftTime;
     private TextView rightTime;
     private ImageView tagImage;
     private TextView tagName;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_account_book_list_view);
+
         mContext = this;
+
         userName = (TextView)findViewById(R.id.user_name);
         userEmail = (TextView)findViewById(R.id.user_email);
         userName.setTypeface(CoCoinUtil.typefaceLatoRegular);
         userEmail.setTypeface(CoCoinUtil.typefaceLatoLight);
+
         User user = BmobUser.getCurrentUser(CoCoinApplication.getAppContext(), User.class);
-        setUser(user);
+        if (user != null) {
+            userName.setText(user.getUsername());
+            userEmail.setText(user.getEmail());
+        }
+
+        int size = RecordManager.getInstance(CoCoinApplication.getAppContext()).RECORDS.size();
+        if (RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_RECORDS == null) {
+            RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_RECORDS = new LinkedList<>();
+        }
+        RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_RECORDS.clear();
+        for (int i = 0; i < size; i++) {
+            CoCoinRecord record = new CoCoinRecord();
+            record.set(RecordManager.RECORDS.get(i));
+            RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_RECORDS.add(record);
+        }
         RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_SUM = Double.valueOf(RecordManager.getInstance(CoCoinApplication.getAppContext()).SUM);
         originalSum = RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_SUM;
+
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
         setTitle("");
+
         mDrawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-        checkCompatibility();
+
+        int currentapiVersion = android.os.Build.VERSION.SDK_INT;
+
+        if (currentapiVersion >= Build.VERSION_CODES.LOLLIPOP) {
+            // Do something for lollipop and above versions
+            Window window = this.getWindow();
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(ContextCompat.getColor(mContext, R.color.statusBarColor));
+        } else{
+            // do something for phones running an SDK before lollipop
+            View statusBarView = (View)findViewById(R.id.status_bar_view);
+            statusBarView.getLayoutParams().height = CoCoinUtil.getStatusBarHeight();
+        }
+
+        if (toolbar != null) {
+            setSupportActionBar(toolbar);
+
+            final ActionBar actionBar = getSupportActionBar();
+            if (actionBar != null) {
+                actionBar.setDisplayHomeAsUpEnabled(true);
+                actionBar.setDisplayShowHomeEnabled(true);
+                actionBar.setDisplayShowTitleEnabled(true);
+                actionBar.setDisplayUseLogoEnabled(false);
+                actionBar.setHomeButtonEnabled(true);
+            }
+        }
+
         mDrawerToggle = new ActionBarDrawerToggle(this, mDrawer, 0, 0);
         mDrawer.setDrawerListener(mDrawerToggle);
+
         searchView = (MaterialSearchView) findViewById(R.id.search_view);
         searchView.setVoiceSearch(false);
         searchView.setHint(mContext.getResources().getString(R.string.input_remark_to_search));
@@ -178,42 +238,53 @@ public class AccountBookListViewActivity extends AppCompatActivity
                 new SelectRecordsByRemark(query).execute();
                 return false;
             }
+
             @Override
             public boolean onQueryTextChange(String newText) {
                 return false;
             }
         });
+
         searchView.setOnSearchViewListener(new MaterialSearchView.SearchViewListener() {
             @Override
             public void onSearchViewShown() {
                 //Do some magic
                 Log.d("Saver", "onSearchViewShown");
             }
+
             @Override
             public void onSearchViewClosed() {
                 //Do some magic
                 Log.d("Saver", "onSearchViewClosed");
             }
         });
+
         emptyTip = (TextView)findViewById(R.id.empty_tip);
         emptyTip.setTypeface(CoCoinUtil.GetTypeface());
+
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
         layoutManager = new LinearLayoutManager(mContext, LinearLayoutManager.VERTICAL, false);
+
         recyclerViewTouchActionGuardManager = new RecyclerViewTouchActionGuardManager();
         recyclerViewTouchActionGuardManager.
                 setInterceptVerticalScrollingWhileAnimationRunning(true);
         recyclerViewTouchActionGuardManager.setEnabled(true);
+
         recyclerViewSwipeManager = new RecyclerViewSwipeManager();
+
         mAdapter = new MySwipeableItemAdapter(mContext, RecordManager.SELECTED_RECORDS, this, this);
         mAdapter.setEventListener(new MySwipeableItemAdapter.EventListener() {
+
             @Override
             public void onItemRemoved(int position) {
                 activityOnItemRemoved(position);
             }
+
             @Override
             public void onItemPinned(int position) {
                 activityOnItemPinned(position);
             }
+
             @Override
             public void onItemViewClicked(View v1, boolean pinned1) {
                 int position = recyclerView.getChildAdapterPosition(v1);
@@ -222,13 +293,17 @@ public class AccountBookListViewActivity extends AppCompatActivity
                 }
             }
         });
+
         adapter = mAdapter;
         wrappedAdapter = recyclerViewSwipeManager.createWrappedAdapter(mAdapter);
         final GeneralItemAnimator animator = new SwipeDismissItemAnimator();
+
         animator.setSupportsChangeAnimations(false);
+
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setAdapter(wrappedAdapter);
         recyclerView.setItemAnimator(animator);
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             // Lollipop or later has native drop shadow feature. ItemShadowDecorator is not required.
         } else {
@@ -239,20 +314,26 @@ public class AccountBookListViewActivity extends AppCompatActivity
         }
         recyclerView.addItemDecoration(new SimpleListDividerDecorator(
                 ContextCompat.getDrawable(mContext, R.drawable.list_divider_h), true));
+
         // NOTE:
         // The initialization order is very important! This order determines the priority of touch event handling.
         //
         // priority: TouchActionGuard > Swipe > DragAndDrop
         recyclerViewTouchActionGuardManager.attachRecyclerView(recyclerView);
         recyclerViewSwipeManager.attachRecyclerView(recyclerView);
+
         verticalRecyclerViewFastScroller
                 = (VerticalRecyclerViewFastScroller)findViewById(R.id.fast_scroller);
+
         // Connect the recycler to the scroller (to let the scroller scroll the list)
         verticalRecyclerViewFastScroller.setRecyclerView(recyclerView);
+
         // Connect the scroller to the recycler (to let the recycler scroll the scroller's handle)
         recyclerView.setOnScrollListener(
                 verticalRecyclerViewFastScroller.getOnScrollListener());
+
         CoCoinUtil.backupCoCoinRecord = null;
+
         if (RecordManager.SELECTED_RECORDS.size() == 0) {
             emptyTip.setVisibility(View.VISIBLE);
             verticalRecyclerViewFastScroller.setVisibility(View.INVISIBLE);
@@ -260,10 +341,12 @@ public class AccountBookListViewActivity extends AppCompatActivity
             emptyTip.setVisibility(View.GONE);
             verticalRecyclerViewFastScroller.setVisibility(View.VISIBLE);
         }
+
         infoLayout = (FrameLayout)mDrawer.findViewById(R.id.info_layout);
         LinearLayout.LayoutParams infoLayoutParams = new LinearLayout.LayoutParams(infoLayout.getLayoutParams());
         infoLayoutParams.setMargins(0, CoCoinUtil.getStatusBarHeight() - CoCoinUtil.dpToPx(30), 0, 0);
         infoLayout.setLayoutParams(infoLayoutParams);
+
         profileImage= (CircleImageView)mDrawer.findViewById(R.id.profile_image);
         profileImage.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -275,8 +358,11 @@ public class AccountBookListViewActivity extends AppCompatActivity
                 }
             }
         });
-        DemoSlider = (SliderLayout)findViewById(R.id.slider);
+
+        mDemoSlider = (SliderLayout)findViewById(R.id.slider);
+
         HashMap<String, Integer> urls = CoCoinUtil.GetDrawerTopUrl();
+
         for(String name : urls.keySet()){
             CustomSliderView customSliderView = new CustomSliderView(this);
             // initialize a SliderLayout
@@ -289,16 +375,43 @@ public class AccountBookListViewActivity extends AppCompatActivity
         mDemoSlider.setCustomAnimation(new DescriptionAnimation());
         mDemoSlider.setDuration(4000);
         mDemoSlider.setCustomIndicator((PagerIndicator) findViewById(R.id.custom_indicator));
+
         titleExpense = (TextView)findViewById(R.id.title_expense);
         titleExpense.setTypeface(CoCoinUtil.typefaceLatoLight);
         titleExpense.setText(CoCoinUtil.GetInMoney((int)(double)RecordManager.getInstance(mContext).SELECTED_SUM));
+
         titleSum = (TextView)findViewById(R.id.title_sum);
         titleSum.setTypeface(CoCoinUtil.typefaceLatoLight);
         titleSum.setText(RecordManager.getInstance(mContext).SELECTED_RECORDS.size() + "'s");
+
+//        titleSlider = (SliderLayout)findViewById(R.id.title_slider);
+//        titleSlider.getLayoutParams().height = 48;
+//        titleSlider.getLayoutParams().width = 400 - CoCoinUtil.dpToPx(60 * 2);
+//
+//        HashMap<String, Integer> urls2 = CoCoinUtil.getTransparentUrls();
+//
+//        CustomTitleSliderView customTitleSliderView = new CustomTitleSliderView(0 + "'s", CoCoinFragmentManager.NUMBER_SLIDER);
+//        customTitleSliderView
+//                .image(urls2.get("0"))
+//                .setScaleType(BaseSliderView.ScaleType.Fit);
+//        titleSlider.addSlider(customTitleSliderView);
+//
+//        customTitleSliderView = new CustomTitleSliderView(CoCoinUtil.GetInMoney(0), CoCoinFragmentManager.EXPENSE_SLIDER);
+//        customTitleSliderView
+//                .image(urls2.get("1"))
+//                .setScaleType(BaseSliderView.ScaleType.Fit);
+//        titleSlider.addSlider(customTitleSliderView);
+//
+//        titleSlider.setPresetTransformer(SliderLayout.Transformer.ZoomOut);
+//        titleSlider.setCustomAnimation(new DescriptionAnimation());
+//        titleSlider.setDuration(3000);
+//        titleSlider.setCustomIndicator((PagerIndicator) findViewById(R.id.custom_indicator));
+
         ((TextView)findViewById(R.id.tag_title)).setTypeface(CoCoinUtil.GetTypeface());
         ((TextView)findViewById(R.id.tag_title_expense)).setTypeface(CoCoinUtil.GetTypeface());
         ((TextView)findViewById(R.id.tag_title_time)).setTypeface(CoCoinUtil.GetTypeface());
         ((TextView)findViewById(R.id.tag_title_tag)).setTypeface(CoCoinUtil.GetTypeface());
+
         setMoney = (TextView)findViewById(R.id.select_expense);
         setMoney.setTypeface(CoCoinUtil.GetTypeface());
         setMoney.setOnClickListener(this);
@@ -320,6 +433,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
         select = (TextView)findViewById(R.id.select);
         select.setTypeface(CoCoinUtil.GetTypeface());
         select.setOnClickListener(this);
+
         leftExpense = (TextView)findViewById(R.id.left_expense);
         leftExpense.setTypeface(CoCoinUtil.GetTypeface());
         rightExpense = (TextView)findViewById(R.id.right_expense);
@@ -331,50 +445,12 @@ public class AccountBookListViewActivity extends AppCompatActivity
         tagImage = (ImageView)findViewById(R.id.tag_image);
         tagName = (TextView)findViewById(R.id.tag_name);
         tagName.setTypeface(CoCoinUtil.GetTypeface());
+
         setConditions();
+
         loadLogo();
     }
-    private void setUser (User user){
-        if (user != null) {
-            userName.setText(user.getUsername());
-            userEmail.setText(user.getEmail());
-        }
-        int size = RecordManager.getInstance(CoCoinApplication.getAppContext()).RECORDS.size();
-        if (RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_RECORDS == null) {
-            RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_RECORDS = new LinkedList<>();
-        }
-        RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_RECORDS.clear();
-        for (int i = 0; i < size; i++) {
-            CoCoinRecord record = new CoCoinRecord();
-            record.set(RecordManager.RECORDS.get(i));
-            RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_RECORDS.add(record);
-        }
-    }
-    private void checkCompatibility(){
-        int currentapiVersion = android.os.Build.VERSION.SDK_INT;
-        if (currentapiVersion >= Build.VERSION_CODES.LOLLIPOP) {
-            // Do something for lollipop and above versions
-            Window window = this.getWindow();
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.setStatusBarColor(ContextCompat.getColor(mContext, R.color.statusBarColor));
-        } else{
-            // do something for phones running an SDK before lollipop
-            View statusBarView = (View)findViewById(R.id.status_bar_view);
-            statusBarView.getLayoutParams().height = CoCoinUtil.getStatusBarHeight();
-        }
-        if (toolbar != null) {
-            setSupportActionBar(toolbar);
-            final ActionBar actionBar = getSupportActionBar();
-            if (actionBar != null) {
-                actionBar.setDisplayHomeAsUpEnabled(true);
-                actionBar.setDisplayShowHomeEnabled(true);
-                actionBar.setDisplayShowTitleEnabled(true);
-                actionBar.setDisplayUseLogoEnabled(false);
-                actionBar.setHomeButtonEnabled(true);
-            }
-        }
-    }
+
     private void setConditions() {
         if (LEFT_MONEY == MIN_MONEY) leftExpense.setText(mContext.getResources().getString(R.string.any));
         else leftExpense.setText(CoCoinUtil.GetInMoney((int)LEFT_MONEY));
@@ -404,6 +480,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
             tagName.setText(CoCoinUtil.GetTagName(TAG_ID));
         }
     }
+
     private void changeTitleSlider() {
         titleExpense = (TextView)findViewById(R.id.title_expense);
         titleExpense.setText(CoCoinUtil.GetInMoney((int)(double)RecordManager.getInstance(mContext).SELECTED_SUM));
@@ -411,12 +488,22 @@ public class AccountBookListViewActivity extends AppCompatActivity
         titleSum = (TextView)findViewById(R.id.title_sum);
         titleSum.setText(RecordManager.getInstance(mContext).SELECTED_RECORDS.size() + "'s");
 
+//        titleSlider.stopAutoCycle();
+//
+//        if (CoCoinFragmentManager.numberCustomTitleSliderView != null)
+//            CoCoinFragmentManager.numberCustomTitleSliderView.setTitle(RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_RECORDS.size() + "'s");
+//        if (CoCoinFragmentManager.expenseCustomTitleSliderView != null)
+//            CoCoinFragmentManager.expenseCustomTitleSliderView.setTitle(CoCoinUtil.GetInMoney((int)(double)RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_SUM));
+//
+//        titleSlider.startAutoCycle();
     }
+
     private MaterialDialog progressDialog;
     @Override
     public void onSelectSumChanged() {
         changeTitleSlider();
     }
+
     private MaterialDialog dialog;
     private View dialogView;
     @Override
@@ -445,15 +532,12 @@ public class AccountBookListViewActivity extends AppCompatActivity
         remark.setText(RecordManager.SELECTED_RECORDS.get(position).getRemark());
         date.setText(RecordManager.SELECTED_RECORDS.get(position).getCalendarString());
     }
-    /**
-     * @author
-     * @version
-     */
-    private class SelectRecordsByRemark extends AsyncTask<String, Void, String> {
-    //some function
+
+    public class SelectRecordsByRemark extends AsyncTask<String, Void, String> {
+
         private String sub;
 
-        private SelectRecordsByRemark(String sub) {
+        public SelectRecordsByRemark(String sub) {
             this.sub = sub;
         }
 
@@ -481,7 +565,9 @@ public class AccountBookListViewActivity extends AppCompatActivity
         @Override
         protected void onPostExecute(String result) {
             mAdapter.notifyDataSetChanged();
+
             changeTitleSlider();
+
             if (RecordManager.SELECTED_RECORDS.size() == 0) {
                 emptyTip.setVisibility(View.VISIBLE);
                 verticalRecyclerViewFastScroller.setVisibility(View.INVISIBLE);
@@ -489,15 +575,13 @@ public class AccountBookListViewActivity extends AppCompatActivity
                 emptyTip.setVisibility(View.GONE);
                 verticalRecyclerViewFastScroller.setVisibility(View.VISIBLE);
             }
+
             if (progressDialog != null) progressDialog.cancel();
         }
     }
-    /**
-     * @author
-     * @version
-     */
-    private class SelectRecords extends AsyncTask<String, Void, String> {
-    //some function
+
+    public class SelectRecords extends AsyncTask<String, Void, String> {
+
         @Override
         protected String doInBackground(String... params) {
             RecordManager.getInstance(mContext).SELECTED_SUM = 0d;
@@ -515,13 +599,16 @@ public class AccountBookListViewActivity extends AppCompatActivity
                     RecordManager.getInstance(mContext).SELECTED_RECORDS.add(record);
                 }
             }
+
             originalSum = RecordManager.getInstance(mContext).SELECTED_SUM;
             return null;
         }
         @Override
         protected void onPostExecute(String result) {
             mAdapter.notifyDataSetChanged();
+
             changeTitleSlider();
+
             if (RecordManager.SELECTED_RECORDS.size() == 0) {
                 emptyTip.setVisibility(View.VISIBLE);
                 verticalRecyclerViewFastScroller.setVisibility(View.INVISIBLE);
@@ -529,9 +616,11 @@ public class AccountBookListViewActivity extends AppCompatActivity
                 emptyTip.setVisibility(View.GONE);
                 verticalRecyclerViewFastScroller.setVisibility(View.VISIBLE);
             }
+
             if (progressDialog != null) progressDialog.cancel();
         }
     }
+
     private void selectRecords() {
         mDrawer.closeDrawers();
         progressDialog = new MaterialDialog.Builder(this)
@@ -542,26 +631,32 @@ public class AccountBookListViewActivity extends AppCompatActivity
                 .show();
         new SelectRecords().execute();
     }
+
     private boolean inMoney(CoCoinRecord record) {
         return LEFT_MONEY <= record.getMoney() && record.getMoney() <= RIGHT_MONEY;
     }
+
     private boolean inTag(CoCoinRecord record) {
         if (TAG_ID == -1) return true;
         else return record.getTag() == TAG_ID;
     }
+
     private boolean inTime(CoCoinRecord record) {
         if (LEFT_CALENDAR == null || RIGHT_CALENDAR == null) return true;
         else return !record.getCalendar().before(LEFT_CALENDAR) && !record.getCalendar().after(RIGHT_CALENDAR);
     }
+
     private boolean inRemark(CoCoinRecord record, String sub) {
         return record.getRemark().contains(sub);
     }
+
     @Override
     protected void onStop() {
         mDemoSlider.stopAutoCycle();
 //        titleSlider.stopAutoCycle();
         super.onStop();
     }
+
     @Override
     public void onResume() {
         if (mDemoSlider != null) mDemoSlider.startAutoCycle();
@@ -571,11 +666,14 @@ public class AccountBookListViewActivity extends AppCompatActivity
         }
         super.onResume();
     }
+
     private void activityOnItemRemoved(int position) {
+
         if (RecordManager.SELECTED_RECORDS.size() == 0) {
             emptyTip.setVisibility(View.VISIBLE);
             verticalRecyclerViewFastScroller.setVisibility(View.INVISIBLE);
         }
+
         lastPosition = RecordManager.SELECTED_RECORDS.size() - position;
         undid = false;
         Snackbar snackbar =
@@ -626,13 +724,19 @@ public class AccountBookListViewActivity extends AppCompatActivity
                         .eventListener(new EventListener() {
                             @Override
                             public void onShow(Snackbar snackbar) {
+
                             }
+
                             @Override
                             public void onShowByReplace(Snackbar snackbar) {
+
                             }
+
                             @Override
                             public void onShown(Snackbar snackbar) {
+
                             }
+
                             @Override
                             public void onDismiss(Snackbar snackbar) {
                                 if (CoCoinUtil.backupCoCoinRecord != null) {
@@ -640,6 +744,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
                                 }
                                 CoCoinUtil.backupCoCoinRecord = null;
                             }
+
                             @Override
                             public void onDismissByReplace(Snackbar snackbar) {
                                 if (CoCoinUtil.backupCoCoinRecord != null) {
@@ -647,6 +752,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
                                 }
                                 CoCoinUtil.backupCoCoinRecord = null;
                             }
+
                             @Override
                             public void onDismissed(Snackbar snackbar) {
                                 if (CoCoinUtil.backupCoCoinRecord != null) {
@@ -657,14 +763,18 @@ public class AccountBookListViewActivity extends AppCompatActivity
                         });
         SnackbarManager.show(snackbar);
     }
+
     private void activityOnItemPinned(int position) {
         mAdapter.notifyItemChanged(position);
         Intent intent = new Intent(mContext, EditRecordActivity.class);
         intent.putExtra("POSITION", position);
         startActivityForResult(intent, EDITTING_RECORD);
     }
+
     private void activityOnItemClicked(int position) {
+
     }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
@@ -686,6 +796,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
                 break;
         }
     }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_account_book_list_view, menu);
@@ -695,16 +806,19 @@ public class AccountBookListViewActivity extends AppCompatActivity
 
         return true;
     }
+
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
         mDrawerToggle.syncState();
     }
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         return mDrawerToggle.onOptionsItemSelected(item) ||
                 super.onOptionsItemSelected(item);
     }
+
     @Override
     public void onBackPressed() {
         if (mDrawer.isDrawerOpen(GravityCompat.START)) {
@@ -717,46 +831,68 @@ public class AccountBookListViewActivity extends AppCompatActivity
         }
         super.onBackPressed();
     }
+
     @Override
     public void finish() {
+
         SettingManager.getInstance().setRecordIsUpdated(true);
+
         if (RecordManager.SELECTED_SUM != originalSum) {
             SettingManager.getInstance().setTodayViewMonthExpenseShouldChange(true);
         }
+
         if (CoCoinUtil.backupCoCoinRecord != null) {
             RecordManager.deleteRecord(CoCoinUtil.backupCoCoinRecord, true);
         }
         CoCoinUtil.backupCoCoinRecord = null;
+
         super.finish();
     }
+
     @Override
     public void onDestroy() {
         if (recyclerViewSwipeManager != null) {
             recyclerViewSwipeManager.release();
             recyclerViewSwipeManager = null;
         }
+
         if (recyclerViewTouchActionGuardManager != null) {
             recyclerViewTouchActionGuardManager.release();
             recyclerViewTouchActionGuardManager = null;
         }
+
         if (recyclerView != null) {
             recyclerView.setItemAnimator(null);
             recyclerView.setAdapter(null);
             recyclerView = null;
         }
+
         if (wrappedAdapter != null) {
             WrapperAdapterUtils.releaseAll(wrappedAdapter);
             wrappedAdapter = null;
         }
         mAdapter = null;
         layoutManager = null;
+
         SuperToast.cancelAllSuperToasts();
+
+//        titleSlider.stopAutoCycle();
+//        titleSlider.removeAllSliders();
+//        titleSlider.destroyDrawingCache();
+//        titleSlider = null;
+
+//        CoCoinFragmentManager.numberCustomTitleSliderView = null;
+//        CoCoinFragmentManager.expenseCustomTitleSliderView = null;
+
         doubleSliderClickListener = null;
+
         RecordManager.SELECTED_RECORDS.clear();
         RecordManager.SELECTED_RECORDS = null;
         RecordManager.SELECTED_SUM = 0d;
+
         super.onDestroy();
     }
+
     private void loadLogo() {
         User user = BmobUser.getCurrentUser(CoCoinApplication.getAppContext(), User.class);
         if (user != null) {
@@ -798,16 +934,17 @@ public class AccountBookListViewActivity extends AppCompatActivity
                     profileImage.setImageBitmap(b);
                 }
             } catch (FileNotFoundException e) {
-                e.printStackTrace();
+               System.out.println("Error");
             }
         } else {
             // use the default logo
             profileImage.setImageResource(R.drawable.default_user_logo);
         }
     }
+
     @Override
-    public void onClick(View v3) {
-        switch (v3.getId()) {
+    public void onClick(View v2) {
+        switch (v2.getId()) {
             case R.id.select_expense:
                 setExpense();
                 break;
@@ -836,6 +973,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
                 break;
         }
     }
+
     private double inputNumber = -1;
     private void setExpense() {
         inputNumber = -1;
@@ -855,56 +993,54 @@ public class AccountBookListViewActivity extends AppCompatActivity
                         } catch (NumberFormatException n) {
                             inputNumber = -1;
                         }
-                        if (inputNumber == -1) dialog1.getActionButton(DialogAction.POSITIVE).setEnabled(false);
-                        else dialog1.getActionButton(DialogAction.POSITIVE).setEnabled(true);
+                        if (inputNumber == -1) dialog.getActionButton(DialogAction.POSITIVE).setEnabled(false);
+                        else dialog.getActionButton(DialogAction.POSITIVE).setEnabled(true);
                     }
                 })
                 .onAny(new MaterialDialog.SingleButtonCallback() {
                     @Override
-                    public void onClick(@NonNull MaterialDialog dialog2, @NonNull DialogAction which2) {
-                        OnClickAction(which2);
+                    public void onClick(@NonNull MaterialDialog dialog3, @NonNull DialogAction which3) {
+                        if (which3 == DialogAction.POSITIVE) {
+                            LEFT_MONEY = inputNumber;
+                            inputNumber = -1;
+                            new MaterialDialog.Builder(mContext)
+                                    .title(R.string.set_expense)
+                                    .content(R.string.set_right_expense)
+                                    .positiveText(R.string.ok)
+                                    .negativeText(R.string.cancel)
+                                    .inputType(InputType.TYPE_CLASS_NUMBER)
+                                    .input("≤" + (int)(double)CoCoinUtil.INPUT_MAX_EXPENSE, "", new MaterialDialog.InputCallback() {
+                                        @Override
+                                        public void onInput(MaterialDialog dialog3, CharSequence input3) {
+                                            try {
+                                                inputNumber = Double.valueOf(String.valueOf(input3));
+                                                if (inputNumber < CoCoinUtil.INPUT_MIN_EXPENSE || inputNumber > CoCoinUtil.INPUT_MAX_EXPENSE)
+                                                    inputNumber = -1;
+                                            } catch (NumberFormatException n) {
+                                                inputNumber = -1;
+                                            }
+                                            if (inputNumber == -1) dialog.getActionButton(DialogAction.POSITIVE).setEnabled(false);
+                                            else dialog.getActionButton(DialogAction.POSITIVE).setEnabled(true);
+                                        }
+                                    })
+                                    .onAny(new MaterialDialog.SingleButtonCallback() {
+                                        @Override
+                                        public void onClick(@NonNull MaterialDialog dialog5, @NonNull DialogAction which5) {
+                                            if (which5 == DialogAction.POSITIVE) {
+                                                RIGHT_MONEY = inputNumber;
+                                                setConditions();
+                                            }
+                                        }
+                                    })
+                                    .alwaysCallInputCallback()
+                                    .show();
+                        }
                     }
                 })
                 .alwaysCallInputCallback()
                 .show();
     }
-    private void OnClickAction(DialogAction which5){
-        if (which5 == DialogAction.POSITIVE) {
-            LEFT_MONEY = inputNumber;
-            inputNumber = -1;
-            new MaterialDialog.Builder(mContext)
-                    .title(R.string.set_expense)
-                    .content(R.string.set_right_expense)
-                    .positiveText(R.string.ok)
-                    .negativeText(R.string.cancel)
-                    .inputType(InputType.TYPE_CLASS_NUMBER)
-                    .input("≤" + (int)(double)CoCoinUtil.INPUT_MAX_EXPENSE, "", new MaterialDialog.InputCallback() {
-                        @Override
-                        public void onInput(MaterialDialog dialog2, CharSequence input2) {
-                            try {
-                                inputNumber = Double.valueOf(String.valueOf(input2));
-                                if (inputNumber < CoCoinUtil.INPUT_MIN_EXPENSE || inputNumber > CoCoinUtil.INPUT_MAX_EXPENSE)
-                                    inputNumber = -1;
-                            } catch (NumberFormatException n) {
-                                inputNumber = -1;
-                            }
-                            if (inputNumber == -1) dialog2.getActionButton(DialogAction.POSITIVE).setEnabled(false);
-                            else dialog.getActionButton(DialogAction.POSITIVE).setEnabled(true);
-                        }
-                    })
-                    .onAny(new MaterialDialog.SingleButtonCallback() {
-                        @Override
-                        public void onClick(@NonNull MaterialDialog dialog4, @NonNull DialogAction which4) {
-                            if (which4 == DialogAction.POSITIVE) {
-                                RIGHT_MONEY = inputNumber;
-                                setConditions();
-                            }
-                        }
-                    })
-                    .alwaysCallInputCallback()
-                    .show();
-        }
-    }
+
     private boolean isFrom = true;
     private void setCalendar() {
         Calendar now = Calendar.getInstance();
@@ -917,6 +1053,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
         dpd.setTitle(mContext.getResources().getString(R.string.set_left_calendar));
         dpd.show(((Activity)mContext).getFragmentManager(), "Datepickerdialog");
         isFrom = true;
+    }
 
     private int fromYear, fromMonth, fromDay;
     private Calendar to = Calendar.getInstance();
@@ -940,8 +1077,10 @@ public class AccountBookListViewActivity extends AppCompatActivity
         } else {
             from.set(fromYear, fromMonth - 1, fromDay, 0, 0, 0);
             from.add(Calendar.SECOND, 0);
+
             to.set(year, monthOfYear, dayOfMonth, 23, 59, 59);
             to.add(Calendar.SECOND, 0);
+
             if (to.before(from)) {
                 CoCoinUtil.showToast(mContext, mContext.getResources().getString(R.string.from_invalid), SuperToast.Background.RED);
             } else {
@@ -951,6 +1090,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
             }
         }
     }
+
     private MyGridView myGridView;
     private DialogTagChooseGridViewAdapter dialogTagChooseGridViewAdapter;
     private MaterialDialog tagSelectDialog;
@@ -965,6 +1105,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
         myGridView = (MyGridView)tagSelectDialogView.findViewById(R.id.grid_view);
         dialogTagChooseGridViewAdapter = new DialogTagChooseGridViewAdapter(mContext);
         myGridView.setAdapter(dialogTagChooseGridViewAdapter);
+
         myGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
@@ -975,12 +1116,15 @@ public class AccountBookListViewActivity extends AppCompatActivity
             }
         });
     }
+
     private DoubleSliderClickListener doubleSliderClickListener = new DoubleSliderClickListener() {
         @Override
-        public void onSingleClick(BaseSliderView vis) {
+        public void onSingleClick(BaseSliderView v12) {
+
         }
+
         @Override
-        public void onDoubleClick(BaseSliderView vor) {
+        public void onDoubleClick(BaseSliderView v11) {
             if (recyclerView != null) recyclerView.scrollToPosition(0);
         }
     };
