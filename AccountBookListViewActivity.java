@@ -2,7 +2,6 @@ package com.nightonke.saver.activity;
 
 import android.app.Activity;
 import android.content.*;
-import android.graphics.*;
 import android.graphics.Color;
 import android.graphics.drawable.NinePatchDrawable;
 import android.os.*;
@@ -31,10 +30,7 @@ import com.h6ah4i.android.widget.advrecyclerview.decoration.*;
 import com.h6ah4i.android.widget.advrecyclerview.swipeable.RecyclerViewSwipeManager;
 import com.h6ah4i.android.widget.advrecyclerview.touchguard.RecyclerViewTouchActionGuardManager;
 import com.h6ah4i.android.widget.advrecyclerview.utils.WrapperAdapterUtils;
-import com.koushikdutta.async.future.FutureCallback;
-import com.koushikdutta.ion.Ion;
 import com.miguelcatalan.materialsearchview.MaterialSearchView;
-import com.nightonke.saver.BuildConfig;
 import com.nightonke.saver.R;
 import com.nightonke.saver.adapter.*;
 import com.nightonke.saver.model.*;
@@ -44,14 +40,12 @@ import com.nispok.snackbar.*;
 import com.nispok.snackbar.enums.SnackbarType;
 import com.nispok.snackbar.listeners.*;
 import com.wdullaer.materialdatetimepicker.date.DatePickerDialog;
-import java.io.*;
+
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
-import butterknife.OnClick;
+
 import cn.bmob.v3.*;
-import cn.bmob.v3.listener.FindListener;
 import de.hdodenhof.circleimageview.CircleImageView;
 import xyz.danoz.recyclerviewfastscroller.vertical.VerticalRecyclerViewFastScroller;
 
@@ -66,13 +60,13 @@ public class AccountBookListViewActivity extends AppCompatActivity
         DatePickerDialog.OnDateSetListener,
         MySwipeableItemAdapter.OnItemDeleteListener,
         MySwipeableItemAdapter.OnItemClickListener {
-
+    private final AccountBookListView2 accountBookListView2 = new AccountBookListView2();
+    private final AccountBookListView3 accountBookListView3 = new AccountBookListView3();
     //some declarations
     private MaterialSearchView searchView;
     private Context mContext;
     private DrawerLayout mDrawer;
     private ActionBarDrawerToggle mDrawerToggle;
-    private Toolbar toolbar;
     private RecyclerView recyclerView;
     private RecyclerView.LayoutManager layoutManager;
     private RecyclerView.Adapter adapter;
@@ -81,39 +75,13 @@ public class AccountBookListViewActivity extends AppCompatActivity
     private RecyclerViewTouchActionGuardManager recyclerViewTouchActionGuardManager;
     private MySwipeableItemAdapter mAdapter;
     private TextView emptyTip;
-    private int lastPosition;
-    private boolean undid = false;
     private final int EDITTING_RECORD = 0;
     private VerticalRecyclerViewFastScroller verticalRecyclerViewFastScroller;
-    private double originalSum;
     private CircleImageView profileImage;
     private SliderLayout mDemoSlider;
     private FrameLayout infoLayout;
-    private TextView titleExpense;
-    private TextView titleSum;
     private SliderLayout titleSlider;
-    private TextView userName;
-    private TextView userEmail;
-    private final double MIN_MONEY = 0;
-    private final double MAX_MONEY = 99999;
-    private double LEFT_MONEY = CoCoinUtil.INPUT_MIN_EXPENSE;
-    private double RIGHT_MONEY = CoCoinUtil.INPUT_MAX_EXPENSE;
     private int TAG_ID = -1;
-    private Calendar LEFT_CALENDAR = null;
-    private Calendar RIGHT_CALENDAR = null;
-    private TextView setMoney;
-    private TextView noMoney;
-    private TextView setTime;
-    private TextView noTime;
-    private TextView setTag;
-    private TextView noTag;
-    private TextView select;
-    private TextView leftExpense;
-    private TextView rightExpense;
-    private TextView leftTime;
-    private TextView rightTime;
-    private ImageView tagImage;
-    private TextView tagName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,19 +90,19 @@ public class AccountBookListViewActivity extends AppCompatActivity
 
         mContext = this;
 
-        userName = (TextView)findViewById(R.id.user_name);
-        userEmail = (TextView)findViewById(R.id.user_email);
-        userName.setTypeface(CoCoinUtil.typefaceLatoRegular);
-        userEmail.setTypeface(CoCoinUtil.typefaceLatoLight);
+        accountBookListView2.userName = (TextView) findViewById(R.id.user_name);
+        accountBookListView2.userEmail = (TextView) findViewById(R.id.user_email);
+        accountBookListView2.userName.setTypeface(CoCoinUtil.typefaceLatoRegular);
+        accountBookListView2.userEmail.setTypeface(CoCoinUtil.typefaceLatoLight);
 
         User user = BmobUser.getCurrentUser(CoCoinApplication.getAppContext(), User.class);
         setUser(user);
 
         RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_SUM = Double.valueOf(RecordManager.getInstance(CoCoinApplication.getAppContext()).SUM);
-        originalSum = RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_SUM;
+        accountBookListView2.originalSum = RecordManager.getInstance(CoCoinApplication.getAppContext()).SELECTED_SUM;
 
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        accountBookListView3.toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(accountBookListView3.toolbar);
 
         setTitle("");
 
@@ -298,52 +266,52 @@ public class AccountBookListViewActivity extends AppCompatActivity
         mDemoSlider.setDuration(4000);
         mDemoSlider.setCustomIndicator((PagerIndicator) findViewById(R.id.custom_indicator));
 
-        titleExpense = (TextView)findViewById(R.id.title_expense);
-        titleExpense.setTypeface(CoCoinUtil.typefaceLatoLight);
-        titleExpense.setText(CoCoinUtil.GetInMoney((int)(double)RecordManager.getInstance(mContext).SELECTED_SUM));
+        accountBookListView2.titleExpense = (TextView) findViewById(R.id.title_expense);
+        accountBookListView2.titleExpense.setTypeface(CoCoinUtil.typefaceLatoLight);
+        accountBookListView2.titleExpense.setText(CoCoinUtil.GetInMoney((int)(double)RecordManager.getInstance(mContext).SELECTED_SUM));
 
-        titleSum = (TextView)findViewById(R.id.title_sum);
-        titleSum.setTypeface(CoCoinUtil.typefaceLatoLight);
-        titleSum.setText(RecordManager.getInstance(mContext).SELECTED_RECORDS.size() + "'s");
+        accountBookListView2.titleSum = (TextView) findViewById(R.id.title_sum);
+        accountBookListView2.titleSum.setTypeface(CoCoinUtil.typefaceLatoLight);
+        accountBookListView2.titleSum.setText(RecordManager.getInstance(mContext).SELECTED_RECORDS.size() + "'s");
 
         ((TextView)findViewById(R.id.tag_title)).setTypeface(CoCoinUtil.GetTypeface());
         ((TextView)findViewById(R.id.tag_title_expense)).setTypeface(CoCoinUtil.GetTypeface());
         ((TextView)findViewById(R.id.tag_title_time)).setTypeface(CoCoinUtil.GetTypeface());
         ((TextView)findViewById(R.id.tag_title_tag)).setTypeface(CoCoinUtil.GetTypeface());
 
-        setMoney = (TextView)findViewById(R.id.select_expense);
-        setMoney.setTypeface(CoCoinUtil.GetTypeface());
-        setMoney.setOnClickListener(this);
-        noMoney = (TextView)findViewById(R.id.no_expense);
-        noMoney.setTypeface(CoCoinUtil.GetTypeface());
-        noMoney.setOnClickListener(this);
-        setTime = (TextView)findViewById(R.id.select_time);
-        setTime.setTypeface(CoCoinUtil.GetTypeface());
-        setTime.setOnClickListener(this);
-        noTime = (TextView)findViewById(R.id.no_time);
-        noTime.setTypeface(CoCoinUtil.GetTypeface());
-        noTime.setOnClickListener(this);
-        setTag = (TextView)findViewById(R.id.select_tag);
-        setTag.setTypeface(CoCoinUtil.GetTypeface());
-        setTag.setOnClickListener(this);
-        noTag = (TextView)findViewById(R.id.no_tag);
-        noTag.setTypeface(CoCoinUtil.GetTypeface());
-        noTag.setOnClickListener(this);
-        select = (TextView)findViewById(R.id.select);
-        select.setTypeface(CoCoinUtil.GetTypeface());
-        select.setOnClickListener(this);
+        accountBookListView2.setMoney = (TextView) findViewById(R.id.select_expense);
+        accountBookListView2.setMoney.setTypeface(CoCoinUtil.GetTypeface());
+        accountBookListView2.setMoney.setOnClickListener(this);
+        accountBookListView2.noMoney = (TextView) findViewById(R.id.no_expense);
+        accountBookListView2.noMoney.setTypeface(CoCoinUtil.GetTypeface());
+        accountBookListView2.noMoney.setOnClickListener(this);
+        accountBookListView2.setTime = (TextView) findViewById(R.id.select_time);
+        accountBookListView2.setTime.setTypeface(CoCoinUtil.GetTypeface());
+        accountBookListView2.setTime.setOnClickListener(this);
+        accountBookListView2.noTime = (TextView) findViewById(R.id.no_time);
+        accountBookListView2.noTime.setTypeface(CoCoinUtil.GetTypeface());
+        accountBookListView2.noTime.setOnClickListener(this);
+        accountBookListView2.setTag = (TextView) findViewById(R.id.select_tag);
+        accountBookListView2.setTag.setTypeface(CoCoinUtil.GetTypeface());
+        accountBookListView2.setTag.setOnClickListener(this);
+        accountBookListView2.noTag = (TextView) findViewById(R.id.no_tag);
+        accountBookListView2.noTag.setTypeface(CoCoinUtil.GetTypeface());
+        accountBookListView2.noTag.setOnClickListener(this);
+        accountBookListView2.select = (TextView) findViewById(R.id.select);
+        accountBookListView2.select.setTypeface(CoCoinUtil.GetTypeface());
+        accountBookListView2.select.setOnClickListener(this);
 
-        leftExpense = (TextView)findViewById(R.id.left_expense);
-        leftExpense.setTypeface(CoCoinUtil.GetTypeface());
-        rightExpense = (TextView)findViewById(R.id.right_expense);
-        rightExpense.setTypeface(CoCoinUtil.GetTypeface());
-        leftTime = (TextView)findViewById(R.id.left_time);
-        leftTime.setTypeface(CoCoinUtil.GetTypeface());
-        rightTime = (TextView)findViewById(R.id.right_time);
-        rightTime.setTypeface(CoCoinUtil.GetTypeface());
-        tagImage = (ImageView)findViewById(R.id.tag_image);
-        tagName = (TextView)findViewById(R.id.tag_name);
-        tagName.setTypeface(CoCoinUtil.GetTypeface());
+        accountBookListView2.leftExpense = (TextView) findViewById(R.id.left_expense);
+        accountBookListView2.leftExpense.setTypeface(CoCoinUtil.GetTypeface());
+        accountBookListView2.rightExpense = (TextView) findViewById(R.id.right_expense);
+        accountBookListView2.rightExpense.setTypeface(CoCoinUtil.GetTypeface());
+        accountBookListView2.leftTime = (TextView) findViewById(R.id.left_time);
+        accountBookListView2.leftTime.setTypeface(CoCoinUtil.GetTypeface());
+        accountBookListView2.rightTime = (TextView) findViewById(R.id.right_time);
+        accountBookListView2.rightTime.setTypeface(CoCoinUtil.GetTypeface());
+        accountBookListView2.tagImage = (ImageView) findViewById(R.id.tag_image);
+        accountBookListView2.tagName = (TextView) findViewById(R.id.tag_name);
+        accountBookListView2.tagName.setTypeface(CoCoinUtil.GetTypeface());
 
         setConditions();
         
@@ -351,8 +319,8 @@ public class AccountBookListViewActivity extends AppCompatActivity
 
     private void setUser (User user){
         if (user != null) {
-            userName.setText(user.getUsername());
-            userEmail.setText(user.getEmail());
+            accountBookListView2.userName.setText(user.getUsername());
+            accountBookListView2.userEmail.setText(user.getEmail());
         }
 
         int size = RecordManager.getInstance(CoCoinApplication.getAppContext()).RECORDS.size();
@@ -382,8 +350,8 @@ public class AccountBookListViewActivity extends AppCompatActivity
             statusBarView.getLayoutParams().height = CoCoinUtil.getStatusBarHeight();
         }
 
-        if (toolbar != null) {
-            setSupportActionBar(toolbar);
+        if (accountBookListView3.toolbar != null) {
+            setSupportActionBar(accountBookListView3.toolbar);
 
             final ActionBar actionBar = getSupportActionBar();
             if (actionBar != null) {
@@ -397,39 +365,39 @@ public class AccountBookListViewActivity extends AppCompatActivity
     }
 
     private void setConditions() {
-        if (LEFT_MONEY == MIN_MONEY) leftExpense.setText(mContext.getResources().getString(R.string.any));
-        else leftExpense.setText(CoCoinUtil.GetInMoney((int)LEFT_MONEY));
-        if (RIGHT_MONEY == MAX_MONEY) rightExpense.setText(mContext.getResources().getString(R.string.any));
-        else rightExpense.setText(CoCoinUtil.GetInMoney((int)RIGHT_MONEY));
-        if (LEFT_CALENDAR == null) leftTime.setText(mContext.getResources().getString(R.string.any));
+        if (accountBookListView2.LEFT_MONEY == accountBookListView2.MIN_MONEY) accountBookListView2.leftExpense.setText(mContext.getResources().getString(R.string.any));
+        else accountBookListView2.leftExpense.setText(CoCoinUtil.GetInMoney((int) accountBookListView2.LEFT_MONEY));
+        if (accountBookListView2.RIGHT_MONEY == accountBookListView2.MAX_MONEY) accountBookListView2.rightExpense.setText(mContext.getResources().getString(R.string.any));
+        else accountBookListView2.rightExpense.setText(CoCoinUtil.GetInMoney((int) accountBookListView2.RIGHT_MONEY));
+        if (accountBookListView2.LEFT_CALENDAR == null) accountBookListView2.leftTime.setText(mContext.getResources().getString(R.string.any));
         else {
             String dateString
-                    = CoCoinUtil.GetMonthShort(LEFT_CALENDAR.get(Calendar.MONTH) + 1)
-                    + " " + LEFT_CALENDAR.get(Calendar.DAY_OF_MONTH) + " " +
-                    LEFT_CALENDAR.get(Calendar.YEAR);
-            leftTime.setText(dateString);
+                    = CoCoinUtil.GetMonthShort(accountBookListView2.LEFT_CALENDAR.get(Calendar.MONTH) + 1)
+                    + " " + accountBookListView2.LEFT_CALENDAR.get(Calendar.DAY_OF_MONTH) + " " +
+                    accountBookListView2.LEFT_CALENDAR.get(Calendar.YEAR);
+            accountBookListView2.leftTime.setText(dateString);
         }
-        if (RIGHT_CALENDAR == null) rightTime.setText(mContext.getResources().getString(R.string.any));
+        if (accountBookListView2.RIGHT_CALENDAR == null) accountBookListView2.rightTime.setText(mContext.getResources().getString(R.string.any));
         else {
             String dateString
-                    = CoCoinUtil.GetMonthShort(RIGHT_CALENDAR.get(Calendar.MONTH) + 1)
-                    + " " + RIGHT_CALENDAR.get(Calendar.DAY_OF_MONTH) + " " +
-                    RIGHT_CALENDAR.get(Calendar.YEAR);
-            rightTime.setText(dateString);
+                    = CoCoinUtil.GetMonthShort(accountBookListView2.RIGHT_CALENDAR.get(Calendar.MONTH) + 1)
+                    + " " + accountBookListView2.RIGHT_CALENDAR.get(Calendar.DAY_OF_MONTH) + " " +
+                    accountBookListView2.RIGHT_CALENDAR.get(Calendar.YEAR);
+            accountBookListView2.rightTime.setText(dateString);
         }
         if (TAG_ID == -1) {
-            tagImage.setImageResource(R.drawable.tags_icon);
-            tagName.setText(mContext.getResources().getString(R.string.any));
+            accountBookListView2.tagImage.setImageResource(R.drawable.tags_icon);
+            accountBookListView2.tagName.setText(mContext.getResources().getString(R.string.any));
         } else {
-            tagImage.setImageDrawable(CoCoinUtil.GetTagIconDrawable(TAG_ID));
-            tagName.setText(CoCoinUtil.GetTagName(TAG_ID));
+            accountBookListView2.tagImage.setImageDrawable(CoCoinUtil.GetTagIconDrawable(TAG_ID));
+            accountBookListView2.tagName.setText(CoCoinUtil.GetTagName(TAG_ID));
         }
     }
     private void changeTitleSlider() {
-        titleExpense = (TextView)findViewById(R.id.title_expense);
-        titleExpense.setText(CoCoinUtil.GetInMoney((int)(double)RecordManager.getInstance(mContext).SELECTED_SUM));
-        titleSum = (TextView)findViewById(R.id.title_sum);
-        titleSum.setText(RecordManager.getInstance(mContext).SELECTED_RECORDS.size() + "'s");
+        accountBookListView2.titleExpense = (TextView) findViewById(R.id.title_expense);
+        accountBookListView2.titleExpense.setText(CoCoinUtil.GetInMoney((int)(double)RecordManager.getInstance(mContext).SELECTED_SUM));
+        accountBookListView2.titleSum = (TextView) findViewById(R.id.title_sum);
+        accountBookListView2.titleSum.setText(RecordManager.getInstance(mContext).SELECTED_RECORDS.size() + "'s");
     }
     private MaterialDialog progressDialog;
     @Override
@@ -491,7 +459,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
                     RecordManager.getInstance(mContext).SELECTED_RECORDS.add(record);
                 }
             }
-            originalSum = RecordManager.getInstance(mContext).SELECTED_SUM;
+            accountBookListView2.originalSum = RecordManager.getInstance(mContext).SELECTED_SUM;
             return null;
         }
         @Override
@@ -531,7 +499,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
                     RecordManager.getInstance(mContext).SELECTED_RECORDS.add(record);
                 }
             }
-            originalSum = RecordManager.getInstance(mContext).SELECTED_SUM;
+            accountBookListView2.originalSum = RecordManager.getInstance(mContext).SELECTED_SUM;
             return null;
         }
         @Override
@@ -560,15 +528,15 @@ public class AccountBookListViewActivity extends AppCompatActivity
         new SelectRecords().execute();
     }
     private boolean inMoney(CoCoinRecord record) {
-        return LEFT_MONEY <= record.getMoney() && record.getMoney() <= RIGHT_MONEY;
+        return accountBookListView2.LEFT_MONEY <= record.getMoney() && record.getMoney() <= accountBookListView2.RIGHT_MONEY;
     }
     private boolean inTag(CoCoinRecord record) {
         if (TAG_ID == -1) return true;
         else return record.getTag() == TAG_ID;
     }
     private boolean inTime(CoCoinRecord record) {
-        if (LEFT_CALENDAR == null || RIGHT_CALENDAR == null) return true;
-        else return !record.getCalendar().before(LEFT_CALENDAR) && !record.getCalendar().after(RIGHT_CALENDAR);
+        if (accountBookListView2.LEFT_CALENDAR == null || accountBookListView2.RIGHT_CALENDAR == null) return true;
+        else return !record.getCalendar().before(accountBookListView2.LEFT_CALENDAR) && !record.getCalendar().after(accountBookListView2.RIGHT_CALENDAR);
     }
     private boolean inRemark(CoCoinRecord record, String sub) {
         return record.getRemark().contains(sub);
@@ -593,8 +561,8 @@ public class AccountBookListViewActivity extends AppCompatActivity
             emptyTip.setVisibility(View.VISIBLE);
             verticalRecyclerViewFastScroller.setVisibility(View.INVISIBLE);
         }
-        lastPosition = RecordManager.SELECTED_RECORDS.size() - position;
-        undid = false;
+        accountBookListView2.lastPosition = RecordManager.SELECTED_RECORDS.size() - position;
+        accountBookListView3.undid = false;
         Snackbar snackbar =
                 Snackbar
                         .with(mContext)
@@ -613,7 +581,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
                         .actionListener(new ActionClickListener() {
                             @Override
                             public void onActionClicked(Snackbar snackbar) {
-                                RecordManager.SELECTED_RECORDS.add(lastPosition, CoCoinUtil.backupCoCoinRecord);
+                                RecordManager.SELECTED_RECORDS.add(accountBookListView2.lastPosition, CoCoinUtil.backupCoCoinRecord);
                                 RecordManager.SELECTED_SUM += CoCoinUtil.backupCoCoinRecord.getMoney();
                                 changeTitleSlider();
                                 CoCoinUtil.backupCoCoinRecord = null;
@@ -624,7 +592,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
                                 int lastVisiblePosition = linearLayoutManager
                                         .findLastCompletelyVisibleItemPosition();
                                 final int insertPosition
-                                        = RecordManager.SELECTED_RECORDS.size() - 1 - lastPosition;
+                                        = RecordManager.SELECTED_RECORDS.size() - 1 - accountBookListView2.lastPosition;
                                 if (firstVisiblePosition < insertPosition
                                         && insertPosition <= lastVisiblePosition) {
                                 } else {
@@ -738,7 +706,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
     public void finish() {
         SettingManager.getInstance().setRecordIsUpdated(true);
 
-        if (RecordManager.SELECTED_SUM != originalSum) {
+        if (RecordManager.SELECTED_SUM != accountBookListView2.originalSum) {
             SettingManager.getInstance().setTodayViewMonthExpenseShouldChange(true);
         }
         if (CoCoinUtil.backupCoCoinRecord != null) {
@@ -783,16 +751,16 @@ public class AccountBookListViewActivity extends AppCompatActivity
                 setExpense();
                 break;
             case R.id.no_expense:
-                LEFT_MONEY = CoCoinUtil.INPUT_MIN_EXPENSE;
-                RIGHT_MONEY = CoCoinUtil.INPUT_MAX_EXPENSE;
+                accountBookListView2.LEFT_MONEY = CoCoinUtil.INPUT_MIN_EXPENSE;
+                accountBookListView2.RIGHT_MONEY = CoCoinUtil.INPUT_MAX_EXPENSE;
                 setConditions();
                 break;
             case R.id.select_time:
                 setCalendar();
                 break;
             case R.id.no_time:
-                LEFT_CALENDAR = null;
-                RIGHT_CALENDAR = null;
+                accountBookListView2.LEFT_CALENDAR = null;
+                accountBookListView2.RIGHT_CALENDAR = null;
                 setConditions();
                 break;
             case R.id.select_tag:
@@ -807,9 +775,9 @@ public class AccountBookListViewActivity extends AppCompatActivity
                 break;
         }
     }
-    private double inputNumber = -1;
+
     private void setExpense() {
-        inputNumber = -1;
+        accountBookListView3.inputNumber = -1;
         if(CoCoinUtil.INPUT_MIN_EXPENSE==null){
             System.out.print("Error");
         }else{
@@ -823,13 +791,13 @@ public class AccountBookListViewActivity extends AppCompatActivity
                         @Override
                         public void onInput(MaterialDialog dialog1, CharSequence input1) {
                             try {
-                                inputNumber = Double.valueOf(String.valueOf(input1));
-                                if (inputNumber < CoCoinUtil.INPUT_MIN_EXPENSE || inputNumber > CoCoinUtil.INPUT_MAX_EXPENSE)
-                                    inputNumber = -1;
+                                accountBookListView3.inputNumber = Double.valueOf(String.valueOf(input1));
+                                if (accountBookListView3.inputNumber < CoCoinUtil.INPUT_MIN_EXPENSE || accountBookListView3.inputNumber > CoCoinUtil.INPUT_MAX_EXPENSE)
+                                    accountBookListView3.inputNumber = -1;
                             } catch (NumberFormatException n) {
-                                inputNumber = -1;
+                                accountBookListView3.inputNumber = -1;
                             }
-                            if (inputNumber == -1) dialog.getActionButton(DialogAction.POSITIVE).setEnabled(false);
+                            if (accountBookListView3.inputNumber == -1) dialog.getActionButton(DialogAction.POSITIVE).setEnabled(false);
                             else dialog.getActionButton(DialogAction.POSITIVE).setEnabled(true);
                         }
                     })
@@ -850,8 +818,8 @@ public class AccountBookListViewActivity extends AppCompatActivity
             if(CoCoinUtil.INPUT_MAX_EXPENSE==null){
                 System.out.print("Error");
             }else{
-                LEFT_MONEY = inputNumber;
-                inputNumber = -1;
+                accountBookListView2.LEFT_MONEY = accountBookListView3.inputNumber;
+                accountBookListView3.inputNumber = -1;
                 new MaterialDialog.Builder(mContext)
                         .title(R.string.set_expense)
                         .content(R.string.set_right_expense)
@@ -862,13 +830,13 @@ public class AccountBookListViewActivity extends AppCompatActivity
                             @Override
                             public void onInput(MaterialDialog dialog3, CharSequence input3) {
                                 try {
-                                    inputNumber = Double.valueOf(String.valueOf(input3));
-                                    if (inputNumber < CoCoinUtil.INPUT_MIN_EXPENSE || inputNumber > CoCoinUtil.INPUT_MAX_EXPENSE)
-                                        inputNumber = -1;
+                                    accountBookListView3.inputNumber = Double.valueOf(String.valueOf(input3));
+                                    if (accountBookListView3.inputNumber < CoCoinUtil.INPUT_MIN_EXPENSE || accountBookListView3.inputNumber > CoCoinUtil.INPUT_MAX_EXPENSE)
+                                        accountBookListView3.inputNumber = -1;
                                 } catch (NumberFormatException n) {
-                                    inputNumber = -1;
+                                    accountBookListView3.inputNumber = -1;
                                 }
-                                if (inputNumber == -1) dialog.getActionButton(DialogAction.POSITIVE).setEnabled(false);
+                                if (accountBookListView3.inputNumber == -1) dialog.getActionButton(DialogAction.POSITIVE).setEnabled(false);
                                 else dialog.getActionButton(DialogAction.POSITIVE).setEnabled(true);
                             }
                         })
@@ -876,7 +844,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
                             @Override
                             public void onClick(@NonNull MaterialDialog dialogo, @NonNull DialogAction which1) {
                                 if (which1 == DialogAction.POSITIVE) {
-                                    RIGHT_MONEY = inputNumber;
+                                    accountBookListView2.RIGHT_MONEY = accountBookListView3.inputNumber;
                                     setConditions();
                                 }
                             }
@@ -887,7 +855,7 @@ public class AccountBookListViewActivity extends AppCompatActivity
             }
 
     }
-    private boolean isFrom = true;
+
     private void setCalendar() {
         Calendar now = Calendar.getInstance();
         DatePickerDialog dpd = DatePickerDialog.newInstance(
@@ -898,17 +866,15 @@ public class AccountBookListViewActivity extends AppCompatActivity
         );
         dpd.setTitle(mContext.getResources().getString(R.string.set_left_calendar));
         dpd.show(((Activity)mContext).getFragmentManager(), "Datepickerdialog");
-        isFrom = true;
+        accountBookListView3.isFrom = true;
     }
-    private int fromYear, fromMonth, fromDay;
-    private Calendar to = Calendar.getInstance();
-    private Calendar from = Calendar.getInstance();
+
     @Override
     public void onDateSet(DatePickerDialog view, int year, int monthOfYear, int dayOfMonth) {
-        if (isFrom) {
-            fromYear = year;
-            fromMonth = monthOfYear + 1;
-            fromDay = dayOfMonth;
+        if (accountBookListView3.isFrom) {
+            accountBookListView2.fromYear = year;
+            accountBookListView2.fromMonth = monthOfYear + 1;
+            accountBookListView2.fromDay = dayOfMonth;
             Calendar now = Calendar.getInstance();
             DatePickerDialog dpd = DatePickerDialog.newInstance(
                     this,
@@ -918,19 +884,19 @@ public class AccountBookListViewActivity extends AppCompatActivity
             );
             dpd.setTitle(mContext.getResources().getString(R.string.set_right_calendar));
             dpd.show(((Activity)mContext).getFragmentManager(), "Datepickerdialog");
-            isFrom = false;
+            accountBookListView3.isFrom = false;
         } else {
-            from.set(fromYear, fromMonth - 1, fromDay, 0, 0, 0);
-            from.add(Calendar.SECOND, 0);
+            accountBookListView2.from.set(accountBookListView2.fromYear, accountBookListView2.fromMonth - 1, accountBookListView2.fromDay, 0, 0, 0);
+            accountBookListView2.from.add(Calendar.SECOND, 0);
 
-            to.set(year, monthOfYear, dayOfMonth, 23, 59, 59);
-            to.add(Calendar.SECOND, 0);
+            accountBookListView2.to.set(year, monthOfYear, dayOfMonth, 23, 59, 59);
+            accountBookListView2.to.add(Calendar.SECOND, 0);
 
-            if (to.before(from)) {
+            if (accountBookListView2.to.before(accountBookListView2.from)) {
                 CoCoinUtil.showToast(mContext, mContext.getResources().getString(R.string.from_invalid), SuperToast.Background.RED);
             } else {
-                LEFT_CALENDAR = (Calendar)from.clone();
-                RIGHT_CALENDAR = (Calendar)to.clone();
+                accountBookListView2.LEFT_CALENDAR = (Calendar) accountBookListView2.from.clone();
+                accountBookListView2.RIGHT_CALENDAR = (Calendar) accountBookListView2.to.clone();
                 setConditions();
             }
         }
@@ -955,8 +921,8 @@ public class AccountBookListViewActivity extends AppCompatActivity
             public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
                 tagSelectDialog.dismiss();
                 TAG_ID = RecordManager.getInstance(mContext).TAGS.get(position + 2).getId();
-                tagImage.setImageDrawable(CoCoinUtil.GetTagIconDrawable(TAG_ID));
-                tagName.setText(CoCoinUtil.GetTagName(TAG_ID));
+                accountBookListView2.tagImage.setImageDrawable(CoCoinUtil.GetTagIconDrawable(TAG_ID));
+                accountBookListView2.tagName.setText(CoCoinUtil.GetTagName(TAG_ID));
             }
         });
     }
