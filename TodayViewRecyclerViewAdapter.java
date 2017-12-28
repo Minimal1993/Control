@@ -53,24 +53,140 @@ import lecho.lib.hellocharts.view.PieChartView;
  */
 
 public class TodayViewRecyclerViewAdapter
-        extends TodayViewRecyclerViewAdapterMethods1 {
+        extends RecyclerView.Adapter<TodayViewRecyclerViewAdapter.viewHolder> {
 
+    private OnItemClickListener onItemClickListener;
+    private Context mContext;
+    static final int TYPE_HEADER = 0;
+    static final int TYPE_BODY = 1;
+    static final int TODAY = 0;
+    static final int YESTERDAY = 1;
+    static final int THIS_WEEK = 2;
+    static final int LAST_WEEK = 3;
+    static final int THIS_MONTH = 4;
+    static final int LAST_MONTH = 5;
+    static final int THIS_YEAR = 6;
+    static final int LAST_YEAR = 7;
+    private int fragmentPosition;
+    // the data of this fragment
+    private ArrayList<CoCoinRecord> allData;
+    // store the sum of expenses of each tag
+    private Map<Integer, Double> TagExpanse;
+    // store the records of each tag
+    private Map<Integer, List<CoCoinRecord>> Expanse;
+    // the original target value of the whole pie
+    private float[] originalTargets;
+    // whether the data of this fragment is empty
+    private boolean IS_EMPTY;
+    // the sum of the whole pie
+    private double Sum;
+    // the number of columns in the histogram
+    private int columnNumber;
+    // the axis date value of the histogram(hour, day of week and month, month)
+    private int axis_date;
+    // the month number
+    private int month;
+    // the selected position of one part of the pie
+    private int pieSelectedPosition = 0;
+    // the last selected position of one part of the pie
+    private int lastPieSelectedPosition = -1;
+    // the last selected position of one part of the histogram
+    private int lastHistogramSelectedPosition = -1;
+    // the date string on the footer and header
+    private String dateString;
     // the date string shown in the dialog
     private String dateShownString;
-
+    // the string shown in the dialog
+    private String dialogTitle;
+    // the selected tag in pie
+    private int tagId = -1;
+    // the selected column in histogram
+    private int timeIndex;
     private MaterialDialog dialog;
     private View dialogView;
 
+    public void function1(int value1, int value2, int value3, int axis2){
+        if(fragmentPosition == value1 || fragmentPosition == value2){
+            columnNumber = value3;
+            axis_date = axis2;
+        }
+    }
+
+    public void end1(int size, RecordManager recordManager){
+        for (int j = 2; j < size; j++) {
+            TagExpanse.put(recordManager.TAGS.get(j).getId(), Double.valueOf(0));
+            Expanse.put(recordManager.TAGS.get(j).getId(), new ArrayList<CoCoinRecord>());
+        }
+
+        size = allData.size();
+        for (int i = 0; i < size; i++) {
+            CoCoinRecord coCoinRecord = allData.get(i);
+            TagExpanse.put(coCoinRecord.getTag(),
+                    TagExpanse.get(coCoinRecord.getTag()) + Double.valueOf(coCoinRecord.getMoney()));
+            Expanse.get(coCoinRecord.getTag()).add(coCoinRecord);
+            Sum += coCoinRecord.getMoney();
+            int var1 = Calendar.DAY_OF_WEEK;
+            function2(coCoinRecord, var1 );
+            int var2 =  Calendar.DAY_OF_MONTH;
+            function2(coCoinRecord, var2);
+            function3(coCoinRecord, var1, var2);
+        }
+    }
+
+    public void end2(RecordManager recordManager){
+        if (!IS_EMPTY) {
+            function1(TODAY, YESTERDAY, 24, Calendar.HOUR_OF_DAY);
+            function1(THIS_WEEK, LAST_WEEK, 7, Calendar.DAY_OF_WEEK);
+
+            columnNumber = allData.get(0).getCalendar().getActualMaximum(Calendar.DAY_OF_MONTH);
+            function1(THIS_WEEK, LAST_WEEK, columnNumber, Calendar.DAY_OF_WEEK);
+
+            function1(THIS_YEAR, LAST_YEAR, 12, Calendar.MONTH);
+
+
+            TagExpanse = new TreeMap<>();
+            Expanse = new HashMap<>();
+            originalTargets = new float[columnNumber];
+            for (int i = 0; i < columnNumber; i++) originalTargets[i] = 0;
+
+            int size = recordManager.TAGS.size();
+            end1(size, recordManager);
+            TagExpanse = CoCoinUtil.SortTreeMapByValues(TagExpanse);
+        }
+    }
+
     public TodayViewRecyclerViewAdapter(int start, int end, Context context, int position) {
-        super(context, position);
+
+        mContext = context;
+        fragmentPosition = position;
+        Sum = 0;
 
         RecordManager recordManager = RecordManager.getInstance(mContext.getApplicationContext());
 
+        allData = new ArrayList<>();
         if (start != -1)
             for (int i = start; i >= end; i--) allData.add(recordManager.RECORDS.get(i));
 
+        IS_EMPTY = allData.isEmpty();
+
         setDateString();
         end2(recordManager);
+    }
+
+    public void function3(CoCoinRecord coco1, int vai1, int vai2){
+        if(!((axis_date==vai1)&&(axis_date==vai2))){
+            originalTargets[coco1.getCalendar().get(axis_date)] += coco1.getMoney();
+        }
+    }
+
+    public void function2(CoCoinRecord coco, int calendar){
+        if (axis_date == calendar) {
+            if (CoCoinUtil.WEEK_START_WITH_SUNDAY)
+                originalTargets[coco.getCalendar().get(axis_date) - 1]
+                        += coco.getMoney();
+            else originalTargets[(coco.getCalendar().get(axis_date) + 5) % 7]
+                    += coco.getMoney();
+        }
     }
 
     @Override
@@ -279,6 +395,75 @@ public class TodayViewRecyclerViewAdapter
         }
     }
 
+    public void end3(String text){
+        if ("zh".equals(CoCoinUtil.GetLanguage()))
+            text = getSnackBarDateString() + text + "\n" +
+                    "于" + CoCoinUtil.GetTagName(tagId);
+        else
+            text += getSnackBarDateString() + "\n"
+                    + "in " + CoCoinUtil.GetTagName(tagId);
+    }
+
+    public void end4(String text){
+        if ("zh".equals(CoCoinUtil.GetLanguage()))
+            text = getSnackBarDateString() + "\n" + text;
+        else
+            text += "\n" + getSnackBarDateString();
+    }
+
+    public void function11(viewHolder holder3){
+        if (!(fragmentPosition == TODAY || fragmentPosition == YESTERDAY)) {
+
+// set value touch listener of histogram////////////////////////////////////////////////////////////
+            holder3.histogram.setOnValueTouchListener(
+                    new ColumnChartOnValueSelectListener() {
+                        @Override
+                        public void onValueSelected(int columnIndex,
+                                                    int subcolumnIndex, SubcolumnValue value) {
+                            lastHistogramSelectedPosition = columnIndex;
+                            timeIndex = columnIndex;
+                            // snack bar
+                            RecordManager recordManager
+                                    = RecordManager.getInstance(mContext.getApplicationContext());
+
+                            String text = CoCoinUtil.GetSpendString((int) value.getValue());
+                            if (tagId != -1)
+                                // belongs a tag
+                                end3(text);
+                            else
+                                // don't belong to any tag
+                                end4(text);
+
+// setting the snack bar and dialog title of histogram//////////////////////////////////////////////
+                            dialogTitle = text;
+                            Snackbar snackbar =
+                                    Snackbar
+                                            .with(mContext)
+                                            .type(SnackbarType.MULTI_LINE)
+                                            .duration(Snackbar.SnackbarDuration.LENGTH_SHORT)
+                                            .position(Snackbar.SnackbarPosition.BOTTOM)
+                                            .margin(15, 15)
+                                            .backgroundDrawable(CoCoinUtil.GetSnackBarBackground(
+                                                    fragmentPosition - 2))
+                                            .text(text)
+                                            .textTypeface(CoCoinUtil.GetTypeface())
+                                            .textColor(Color.WHITE)
+                                            .actionLabelTypeface(CoCoinUtil.GetTypeface())
+                                            .actionLabel(mContext.getResources()
+                                                    .getString(R.string.check))
+                                            .actionColor(Color.WHITE)
+                                            .actionListener(new mActionClickListenerForHistogram());
+                            SnackbarManager.show(snackbar);
+                        }
+
+                        @Override
+                        public void onValueDeselected() {
+
+                        }
+                    });
+        }
+    }
+
     public void function12(final viewHolder holder4, final ColumnChartData columnChartData3){
         // set the listener of the reset button/////////////////////////////////////////////////////////////
         if (!(fragmentPosition == TODAY || fragmentPosition == YESTERDAY)) {
@@ -459,16 +644,11 @@ public class TodayViewRecyclerViewAdapter
     //start
     @Override
     public void onBindViewHolder(final viewHolder holder, final int position) {
-
-        switch (getItemViewType(position)) {
-            case TYPE_HEADER:
-                function4(holder);
-                break;
-
-            case TYPE_BODY:
-                function14(holder, position);
-                break;
-        }
+        int i = getItemViewType(position);
+        if (i == 0) {
+            function4(holder);
+        }else
+            function14(holder, position);
     }
     //end
 
@@ -551,6 +731,128 @@ public class TodayViewRecyclerViewAdapter
         }
     }
 
+// set the listener of the check button on the snack bar of histogram///////////////////////////////
+    private class mActionClickListenerForHistogram implements ActionClickListener {
+        @Override
+        public void onActionClicked(Snackbar snackbar) {
+            ArrayList<CoCoinRecord> shownCoCoinRecords = new ArrayList<>();
+            int index = timeIndex;
+            if (axis_date == Calendar.DAY_OF_WEEK) {
+                if (CoCoinUtil.WEEK_START_WITH_SUNDAY) index++;
+                else
+                    if (index == 6) index = 1;
+                    else index += 2;
+            }
+            if (fragmentPosition == THIS_MONTH || fragmentPosition == LAST_MONTH) index++;
+            function22(shownCoCoinRecords, index);
+            ((FragmentActivity)mContext).getSupportFragmentManager()
+                    .beginTransaction()
+                    .add(new RecordCheckDialogFragment(), "MyDialog")
+                    .commit();
+        }
+}
+
+    private void function22( ArrayList<CoCoinRecord> temp, int ind) {
+        if (tagId != -1) {
+            for (int i = 0; i < Expanse.get(tagId).size(); i++)
+                if (Expanse.get(tagId).get(i).getCalendar().get(axis_date) == ind)
+                    temp.add(Expanse.get(tagId).get(i));
+        } else {
+            for (int i = 0; i < allData.size(); i++)
+                if (allData.get(i).getCalendar().get(axis_date) == ind)
+                    temp.add(allData.get(i));
+        }
+    }
+
+    public String zh(String str1, String str2, String str3){
+        if ("zh".equals(CoCoinUtil.GetLanguage()))
+            // 在今天9点
+            return mContext.getResources().getString(Integer.parseInt(str1)) +
+                    mContext.getResources().getString(Integer.parseInt(str2)) +
+                    timeIndex +
+                    mContext.getResources().getString(Integer.parseInt(str3));
+        else
+            // at 9 o'clock today
+            return mContext.getResources().getString(Integer.parseInt(str1)) +
+                    timeIndex + " " +
+                    mContext.getResources().getString(Integer.parseInt(str3)) + " " +
+                    mContext.getResources().getString(Integer.parseInt(str2));
+    }
+
+    public String fl(String str1){
+        return mContext.getString(Integer.parseInt(str1))
+                + CoCoinUtil.GetWeekDay(timeIndex);
+    }
+
+    public String f2(String str3){
+        return mContext.getResources().getString(R.string.on) +
+                CoCoinUtil.GetMonthShort(month) + CoCoinUtil.GetWhetherBlank() +
+                (timeIndex + 1) + CoCoinUtil.GetWhetherFuck();
+    }
+
+    public String d3(String str1, String str2){
+        if ("zh".equals(CoCoinUtil.GetLanguage()))
+            // 在今年1月
+            return mContext.getResources().getString(Integer.parseInt(str1)) +
+                    mContext.getResources().getString(Integer.parseInt(str2)) +
+                    CoCoinUtil.GetMonthShort(timeIndex + 1);
+        else
+            // in Jan. 1
+            return mContext.getResources().getString(Integer.parseInt(str1)) +
+                    CoCoinUtil.GetMonthShort(timeIndex + 1) + " " +
+                    mContext.getResources().getString(Integer.parseInt(str2));
+    }
+
+    public String function55(){
+        switch (fragmentPosition) {
+            case TODAY:
+                zh("at", "today_date_string", "o_clock");
+            case YESTERDAY:
+                zh("at", "yesterday", "o'clock");
+            case THIS_WEEK:
+                // 在周一
+                // on Monday
+                fl("on");
+            case LAST_WEEK:
+                // 在上周一
+                // on last Monday
+                return mContext.getResources().getString(R.string.on)
+                        + mContext.getResources().getString(R.string.last)
+                        + CoCoinUtil.GetWeekDay(timeIndex);
+            default:
+                return null;
+        }
+    }
+
+    public String function66(){
+        switch (fragmentPosition) {
+            case THIS_MONTH:
+                // 在1月1日
+                // on Jan. 1
+                f2("on");
+            case LAST_MONTH:
+                // 在1月1日
+                // on Jan. 1
+                f2("on");
+            case THIS_YEAR:
+                d3("in", "this year");
+            case LAST_YEAR:
+                d3("in", "last year");
+            default:
+                return "";
+        }
+    }
+
+    // set the dateString shown in snack bar in this fragment///////////////////////////////////////////
+    private String getSnackBarDateString() {
+        function55();
+        if(fragmentPosition>=0 && fragmentPosition<=3) {
+            function55();
+        }else
+            function66();
+        return "";
+    }
+
     public void method1(String basicTodayDateString1, Calendar today1, String str1){
         dateString = basicTodayDateString1.substring(6, basicTodayDateString1.length());
         dateShownString = mContext.getResources().getString(Integer.parseInt(str1));
@@ -597,6 +899,14 @@ public class TodayViewRecyclerViewAdapter
         basicYesterdayDateString += CoCoinUtil.GetMonthShort(today.get(Calendar.MONTH) + 1)
                 + " " + yesterday.get(Calendar.DAY_OF_MONTH) + " " +
                 yesterday.get(Calendar.YEAR);
+        int c = fragmentPosition;
+        if(c>= 0 && c<=3){
+            function03(basicTodayDateString, today);
+        }else
+            function47(today);
+    }
+
+    public void function03(String basicTodayDateString, Calendar today) {
         switch (fragmentPosition) {
             case TODAY:
                 method1(basicTodayDateString, today, "today");
@@ -610,6 +920,12 @@ public class TodayViewRecyclerViewAdapter
             case LAST_WEEK:
                 method2(today, "last week");
                 break;
+                default:
+        }
+    }
+
+    public void function47(Calendar today){
+        switch (fragmentPosition) {
             case THIS_MONTH:
                 method3(today, "this month");
                 break;
@@ -626,6 +942,7 @@ public class TodayViewRecyclerViewAdapter
                 dateString = lastYearCalendar.get(Calendar.YEAR) + "";
                 method4("last year");
                 break;
+                default:
         }
     }
 
@@ -639,23 +956,20 @@ public class TodayViewRecyclerViewAdapter
         }
     }
 
-    private String getAllDataDialogTitle() {
+    private void getAllDataDialogTitle() {
         String prefix=null;
         String postfix=null;
         fh(prefix, postfix);
+        int h = fragmentPosition;
+        if(h>0 && h<=3){
+            function33(prefix, postfix);
+        }else
+            function77(prefix, postfix);
+    }
+
+    public String function77(String prefix, String postfix){
         switch (fragmentPosition) {
-            case TODAY:
-                return prefix + mContext.getResources().
-                        getString(R.string.today_date_string) + postfix;
-            case YESTERDAY:
-                return prefix + mContext.getResources().
-                        getString(R.string.yesterday_date_string) + postfix;
-            case THIS_WEEK:
-                return prefix + mContext.getResources().
-                        getString(R.string.this_week_date_string) + postfix;
-            case LAST_WEEK:
-                return prefix + mContext.getResources().
-                        getString(R.string.last_week_date_string) + postfix;
+
             case THIS_MONTH:
                 return prefix + mContext.getResources().
                         getString(R.string.this_month_date_string) + postfix;
@@ -673,4 +987,21 @@ public class TodayViewRecyclerViewAdapter
         }
     }
 
+    public String function33(String prefix, String postfix){
+        switch (fragmentPosition) {
+            case TODAY:
+                return prefix + mContext.getResources().
+                        getString(R.string.today_date_string) + postfix;
+            case YESTERDAY:
+                return prefix + mContext.getResources().
+                        getString(R.string.yesterday_date_string) + postfix;
+            case THIS_WEEK:
+                return prefix + mContext.getResources().
+                        getString(R.string.this_week_date_string) + postfix;
+            case LAST_WEEK:
+                return prefix + mContext.getResources().
+                        getString(R.string.last_week_date_string) + postfix;
+        }
+        return prefix;
+    }
 }
